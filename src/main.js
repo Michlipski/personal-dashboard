@@ -1,1 +1,0 @@
-console.log('Personal Dashboard app is running!');
