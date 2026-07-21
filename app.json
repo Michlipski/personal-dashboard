@@ -17,6 +17,12 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
+      "keystore": {
+        "path": ".android/release-key.jks",
+        "password": "$RELEASE_KEY_PASSWORD",
+        "keyAlias": "release-key",
+        "keyPassword": "$RELEASE_KEY_PASSWORD"
+      },
       "predictiveBackGestureEnabled": false
     },
     "web": {
