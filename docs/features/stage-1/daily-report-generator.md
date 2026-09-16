@@ -23,9 +23,15 @@ The Daily Report Generator provides a unified mechanism to synthesize the day's 
    - Total scheduled minutes vs completed focus minutes.
    - Completion percentage.
    - Habit streak signals.
-3. **Export Actions (Stage 1 Scope):**
-   - **`Copy to Clipboard`:** Copies formatted JSON payload via `expo-clipboard` with toast confirmation.
-   - **`Local Cache Snapshot`:** Saves the finalized report into `daily_reports_archive_YYYY-MM-DD` in client storage.
+3. **Export & Archiving Triggers (Stage 1 Scope):**
+   - **`Copy to Clipboard`:** Copies formatted JSON payload to clipboard with tactile feedback.
+   - **`Local Cache Snapshot`:** Saves the finalized report into `daily_reports_archive_YYYY-MM-DD` and indexes the date in `archived_report_dates`.
+   - **`Automated Rollover Archive`:** Triggered when the user taps `🌅 Start New Day`. Before advancing to tomorrow, today's complete summary report payload is synthesized and archived to client storage automatically.
+4. **Historical Archive Browser (`📜 Past Reports` Tab):**
+   - A dedicated third tab in the Daily view (`DailyPastReportsScreen`).
+   - Displays all archived report dates in descending chronological order (most recent first).
+   - Instant selection displays full executive summary metrics, Schema v1.0 JSON payload, and clipboard copy action.
+   - Includes snapshot deletion and auto-seeding for clean zero-state experiences.
 
 ---
 
@@ -153,5 +159,6 @@ The exported JSON payload follows this explicit schema, featuring an active pian
 ## 5. Engineering Action Items
 
 1. **Aggregation Utility (`generateDailyReport.ts`):** Merges `useScheduleStore` and `useHealthMetricsStore` into the canonical JSON structure.
-2. **Clipboard Hook:** Uses `expo-clipboard` (`Clipboard.setStringAsync(jsonString)`) with a toast notification: *"Daily report JSON copied to clipboard!"*.
-3. **Archive Storage (`archiveDailyReport.ts`):** Saves the payload into client storage for retrospective reference.
+2. **Clipboard Hook & Copy Button:** Uses `copyTextToClipboard` and `CopyReportButton` with a 2000ms visual confirmation badge (`[ ✓ Copied! ]`).
+3. **Archive Storage & Queries (`report.ts`):** Implements `saveDailyReportSnapshot`, `getArchivedReportDates`, and `getArchivedDailyReport` saving into client storage under `daily_reports_archive_YYYY-MM-DD` and indexing active dates.
+4. **Day Rollover Linkage (`StartNewDayConfirmModal.tsx`):** Coordinates summary generation and archiving before advancing the dashboard calendar date to tomorrow.

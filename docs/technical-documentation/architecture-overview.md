@@ -22,9 +22,9 @@ graph TD
         
         subgraph App_Routes [Screens /app]
             Layout[_layout.tsx: ThemeProvider]
-            Index[index.tsx: HomeScreen]
-            ColorPicker[colorPicker.tsx: Color Tool]
-            Explore[explore.tsx: ExploreScreen]
+            Index[index.tsx: Redirect /daily]
+            Daily[daily.tsx: DailyScreen]
+            Storybook[storybook.tsx: StorybookViewer]
         end
 
         subgraph Primitives [UI Component Layer]

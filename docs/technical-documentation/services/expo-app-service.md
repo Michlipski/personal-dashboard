@@ -23,17 +23,17 @@ The Expo Client Service encapsulates the frontend universal application. It mana
 src/
 ├── app/                              # Route-level screens (file-based routing)
 │   ├── _layout.tsx                   # App root provider: ThemeProvider + Splash
-│   ├── index.tsx                     # Route: / (Home screen)
-│   ├── colorPicker.tsx               # Utility screen / component: Color Palette
-│   └── explore.tsx                   # Route: /explore (Feature showcase)
+│   ├── index.tsx                     # Route: / (Redirects to /daily)
+│   ├── daily.tsx                     # Route: /daily (Daily dashboard)
+│   └── storybook.tsx                 # Route: /storybook (Storybook component viewer)
 ├── components/                       # Shared UI components
+│   ├── daily/                        # Stage 1 Daily dashboard components & stores
 │   ├── ui/                           # Primitive composite elements (Collapsible)
-│   ├── animated-icon.*               # Worklet-driven brand hero icon
-│   ├── app-tabs.*                    # Platform-adaptive navigation bar
-│   ├── hint-row.tsx                  # Shortcut helper row
+│   ├── animated-icon.*               # Worklet-driven splash overlay
+│   ├── app-tabs.*                    # Platform-adaptive navigation bar (Daily, Storybook)
+│   ├── external-link.tsx             # External URL opener primitive
 │   ├── themed-text.tsx               # Theme-aware text primitive
-│   ├── themed-view.tsx               # Theme-aware container primitive
-│   └── web-badge.tsx                 # Web platform indicator
+│   └── themed-view.tsx               # Theme-aware container primitive
 ├── constants/                        # Global immutable design tokens
 │   └── theme.ts                      # Color maps, Spacing scales, Fonts
 ├── hooks/                            # Custom hooks
@@ -53,11 +53,12 @@ src/
      return (
        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
          <AnimatedSplashOverlay />
-         <AppTabs />
+         {isStorybook ? <StorybookViewer /> : <AppTabs />}
        </ThemeProvider>
      );
    }
    ```
 2. **Navigation Triggers:**
-   * Tabs link directly to `/` (`HomeScreen`) and `/explore` (`ExploreScreen`).
+   * Root `/` automatically redirects to `/daily`.
+   * Tabs link to `/daily` (`DailyScreen`) and `/storybook` (`StorybookViewer`).
    * Adding new routes requires creating files inside `src/app/` (e.g. `src/app/settings.tsx`), automatically generating typed route definitions.

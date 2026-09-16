@@ -33,11 +33,13 @@
   },
   "scripts": {
     "start": "expo start",
-    "reset-project": "node ./scripts/reset-project.js",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "test": "node scripts/test-runner.js",
+    "storybook": "node ./scripts/storybook.js",
+    "storybook:web": "node ./scripts/storybook.js --web"
   },
   "private": true
 }

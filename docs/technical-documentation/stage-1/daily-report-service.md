@@ -12,9 +12,12 @@ The **Daily Report Service** is the data synthesis and export pipeline of Stage 
 
 ```mermaid
 graph TD
-    Trigger[User Clicks 'Generate Report'] --> Modal[DailyReportModal.tsx]
+    TriggerReport[User Clicks 'Generate Report'] --> Modal[DailyReportModal.tsx]
     Modal --> Aggregator[Aggregator: generateDailyReport.ts]
     
+    TriggerNewDay[User Confirms 'Start New Day'] --> Rollover[StartNewDayConfirmModal.tsx]
+    Rollover --> Aggregator
+
     subgraph Sources [Input State Sources]
         ScheduleStore[useScheduleStore: Blocks & Statuses]
         HealthStore[useHealthMetricsStore: Vitals]
@@ -26,7 +29,7 @@ graph TD
     Aggregator --> SchemaValidation[Payload Validation: Schema v1.0]
     SchemaValidation --> FormattedJson[Formatted JSON Output]
     
-    FormattedJson --> Clipboard[expo-clipboard: System Clipboard]
+    FormattedJson --> Clipboard[Clipboard: System Clipboard]
     FormattedJson --> LocalArchive[AsyncStorage: daily_reports_archive_YYYY-MM-DD]
 ```
 
@@ -35,7 +38,8 @@ graph TD
 ## 2. Component Architecture & Responsibilities
 
 ```
-src/components/report/
+src/components/daily/
+├── DailyPastReportsScreen.tsx        # Screen tab for browsing and inspecting past reports
 ├── DailyReportModal.tsx              # Overlay modal rendering report summary & payload
 ├── JsonSyntaxViewer.tsx              # Monospace code block displaying indented JSON
 └── CopyReportButton.tsx              # Tactile button dispatching clipboard write + toast
@@ -43,15 +47,19 @@ src/components/report/
 
 ### Component Breakdown
 
-1. **`DailyReportModal`:**
-   - Triggered from header button in `DailyScheduleScreen` or `DailyHealthScreen`.
+1. **`DailyPastReportsScreen`:**
+   - Mounted when the active sub-tab is `'reports'`.
+   - Fetches and displays list of past report dates in descending chronological order (`getArchivedReportDates`).
+   - Renders interactive date chips, summary statistics grid, and Schema v1.0 JSON payload viewer with one-tap copy and delete actions.
+2. **`DailyReportModal`:**
+   - Triggered from header button in `DailyScreen`.
    - Invokes `generateDailyReport(date)` on mount.
    - Displays executive summary cards (completion rate, focus hours logged, habits checked, vitals status).
    - Renders `JsonSyntaxViewer` inside a scrollable container.
-2. **`JsonSyntaxViewer`:**
+3. **`JsonSyntaxViewer`:**
    - Displays the serialized JSON string with tokenized monospace typography (`Fonts.mono`).
    - Supports text selection and line-wrapping.
-3. **`CopyReportButton`:**
+4. **`CopyReportButton`:**
    - Invokes `copyReportToClipboard(payload)`.
    - Temporarily updates button label and icon (`[ ✓ Copied! ]`) for 2000ms.
 
@@ -130,28 +138,59 @@ export function generateDailyReport(
 ## 4. Clipboard & Client Archiving Engine
 
 ```typescript
-import * as Clipboard from 'expo-clipboard';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { DailyReportPayload } from '@/types/report';
+import { Storage } from '../stores/storage';
+import { DailyReportPayload } from '../types';
+
+export async function saveDailyReportSnapshot(payload: DailyReportPayload): Promise<boolean> {
+  try {
+    const jsonString = JSON.stringify(payload, null, 2);
+
+    // 1. Save snapshot to Local Client Storage
+    const archiveKey = `daily_reports_archive_${payload.date}`;
+    await Storage.setItem(archiveKey, jsonString);
+
+    // 2. Update master index of archived report dates
+    const indexRaw = await Storage.getItem('archived_report_dates');
+    const dates: string[] = indexRaw ? JSON.parse(indexRaw) : [];
+    if (!dates.includes(payload.date)) {
+      dates.push(payload.date);
+      await Storage.setItem('archived_report_dates', JSON.stringify(dates));
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Failed to save daily report snapshot:', error);
+    return false;
+  }
+}
+
+export async function getArchivedReportDates(): Promise<string[]> {
+  try {
+    const indexRaw = await Storage.getItem('archived_report_dates');
+    return indexRaw ? JSON.parse(indexRaw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function getArchivedDailyReport(date: string): Promise<DailyReportPayload | null> {
+  try {
+    const raw = await Storage.getItem(`daily_reports_archive_${date}`);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
 
 export async function exportDailyReport(payload: DailyReportPayload): Promise<boolean> {
   try {
     const jsonString = JSON.stringify(payload, null, 2);
 
     // 1. Copy to System Clipboard
-    await Clipboard.setStringAsync(jsonString);
+    await copyTextToClipboard(jsonString);
 
     // 2. Save snapshot to Local Client Storage
-    const archiveKey = `daily_reports_archive_${payload.date}`;
-    await AsyncStorage.setItem(archiveKey, jsonString);
-
-    // 3. Update master index of archived report dates
-    const indexRaw = await AsyncStorage.getItem('archived_report_dates');
-    const dates: string[] = indexRaw ? JSON.parse(indexRaw) : [];
-    if (!dates.includes(payload.date)) {
-      dates.push(payload.date);
-      await AsyncStorage.setItem('archived_report_dates', JSON.stringify(dates));
-    }
+    await saveDailyReportSnapshot(payload);
 
     return true;
   } catch (error) {

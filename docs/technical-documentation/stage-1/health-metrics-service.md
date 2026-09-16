@@ -42,14 +42,15 @@ src/components/health/
    - Floating pill toggle using `ThemedView` and `ThemedText`.
    - Dispatches tab switch between `'schedule'` and `'vitals'`.
 3. **`WaterGradientBar`:**
-   - Displays glass count (e.g. `6 of 8 Glasses • 75%`).
-   - Renders a multi-stop horizontal gradient bar that fills dynamically.
-   - Steppers `[ - ]` and `[ + ]` update state in 1-glass (250ml) increments.
+   - Displays volume count (`2,250 ml of 3000 ml`) and percentage only (`75%`) in top-right without mention of glasses.
+   - Flanked directly on the left and right by minimal circular `−` and `+` icon buttons.
+   - Renders axis labels at `0`, `1500ml`, and `3000ml` beneath the track.
+   - Renders a multi-stop horizontal gradient bar filling dynamically up to 3000ml.
 4. **`EnergyLevelSelector`:**
-   - Segmented radio pills for `high`, `medium`, `low` with visual icon accents (`⚡`, `⚖️`, `🔋`).
+   - Segmented radio pills ordered left-to-right from depleted to energized: `🔋 Low` (`#F97316`) $\to$ `⚖️ Medium` (`#EAB308`) $\to$ `⚡ High` (`#10B981`).
 5. **`MoodRatingCard`:**
-   - 5-item horizontal pill selector (`Great`, `Good`, `Neutral`, `Low`, `Stressed`).
-   - Text input for optional notes with debounced auto-save.
+   - 5-item horizontal selector arranged left-to-right from lowest to highest: `😣 Stressed` $\to$ `😔 Low` $\to$ `😐 Neutral` $\to$ `🙂 Good` $\to$ `😄 Great`.
+   - Text input for optional qualitative notes with auto-save.
 6. **`ScreenTimeInput`:**
    - Form inputs for total screen time and optional deep work / leisure splits.
 
@@ -57,73 +58,35 @@ src/components/health/
 
 ## 3. Rainbow Spectrum Gradient Engine
 
-The water intake fill bar utilizes a dynamic linear gradient reflecting hydration state across 6 distinct color stops:
+The water intake fill bar utilizes a dynamic linear gradient reflecting hydration state across 6 distinct color stops scaled to 3000ml (12 increments of 250ml):
 
 $$\text{Red } (\#EF4444) \longrightarrow \text{Orange } (\#F97316) \longrightarrow \text{Yellow } (\#EAB308) \longrightarrow \text{White } (\#FFFFFF) \longrightarrow \text{Sky Blue } (\#38BDF8) \longrightarrow \text{Deep Indigo } (\#4F46E5)$$
 
 ### Mathematical Color Stop Definition
 
-The full gradient spans the domain $[0, 100\%]$. The fill width is calculated as:
-$$W_{\text{fill}} = \min\left( \frac{\text{currentGlasses}}{\text{targetGlasses}} \times 100\%, 100\% \right)$$
-
-To render the gradient correctly inside the fill container, the SVG or linear gradient applies the following color stops:
+The full gradient spans the domain $[0, 100\%]$ representing 0 to 3000ml. The fill level is controlled via an underlying continuous gradient layer with an overlay opacity filter overtop.
 
 ```typescript
 export const WATER_GRADIENT_STOPS = [
-  { offset: '0%', color: '#EF4444' },   // Red (0-1 glass)
-  { offset: '20%', color: '#F97316' },  // Orange (2 glasses)
-  { offset: '40%', color: '#EAB308' },  // Yellow (3-4 glasses)
-  { offset: '60%', color: '#FFFFFF' },  // White baseline (5 glasses)
-  { offset: '80%', color: '#38BDF8' },  // Sky Blue (6-7 glasses)
-  { offset: '100%', color: '#4F46E5' }, // Deep Indigo (8+ glasses)
+  { offset: '0%', color: '#EF4444' },   // Red (0-750ml / Dehydrated)
+  { offset: '20%', color: '#F97316' },  // Orange (750-1250ml)
+  { offset: '40%', color: '#EAB308' },  // Yellow (1250-1750ml)
+  { offset: '60%', color: '#FFFFFF' },  // White baseline (1750-2250ml)
+  { offset: '80%', color: '#38BDF8' },  // Sky Blue (2250-2750ml)
+  { offset: '100%', color: '#4F46E5' }, // Deep Indigo (3000ml / Optimal)
 ] as const;
+
+export const WATER_GRADIENT_CSS =
+  'linear-gradient(90deg, #EF4444 0%, #F97316 20%, #EAB308 40%, #FFFFFF 60%, #38BDF8 80%, #4F46E5 100%)';
 ```
 
-### React Native & Web SVG Implementation
-```tsx
-import React from 'react';
-import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
+### Layered Architecture (Underlying Gradient + Opacity Filter)
 
-interface WaterGradientBarProps {
-  currentGlasses: number;
-  targetGlasses: number;
-  width: number;
-  height?: number;
-}
-
-export const WaterGradientBar: React.FC<WaterGradientBarProps> = ({
-  currentGlasses,
-  targetGlasses,
-  width,
-  height = 24,
-}) => {
-  const percentage = Math.min(Math.max(currentGlasses / targetGlasses, 0), 1);
-  const fillWidth = width * percentage;
-
-  return (
-    <Svg width={width} height={height}>
-      <Defs>
-        <LinearGradient id="waterRainbowGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-          {WATER_GRADIENT_STOPS.map((stop, idx) => (
-            <Stop key={idx} offset={stop.offset} stopColor={stop.color} />
-          ))}
-        </LinearGradient>
-      </Defs>
-      {/* Background Track */}
-      <Rect x={0} y={0} width={width} height={height} rx={height / 2} fill="#212225" />
-      {/* Dynamic Rainbow Fill */}
-      <Rect
-        x={0}
-        y={0}
-        width={fillWidth}
-        height={height}
-        rx={height / 2}
-        fill="url(#waterRainbowGradient)"
-      />
-    </Svg>
-  );
-};
-```
+Instead of squeezing the gradient into an expanding bar or drawing clipped geometry, `WaterGradientBar` utilizes a 2-layer composite:
+1. **Underlying Gradient Layer:** Spans 100% width and height of the track, rendering the canonical rainbow spectrum continuously from 0 to 3000ml (`experimental_backgroundImage` in React Native / `background` CSS in Web).
+2. **Opacity Filter Layer Overtop:** Positioned absolutely from `left: ${percentDisplay}%` to `right: 0` with `backgroundColor: '#1c1d21'` and `opacity: 0.85`.
+   - Reached intake ($0$ to $P\%$) has no overlay and shines at 100% full vibrance.
+   - Unreached capacity ($P\%$ to $100\%$) is filtered by the dark overlay, preserving subtle visibility of upcoming milestones while indicating inactive status.
 
 ---
 
@@ -146,6 +109,8 @@ interface HealthMetricsStoreState {
   setEnergyLevel: (level: EnergyLevel) => Promise<void>;
   setMood: (mood: MoodRating, notes?: string) => Promise<void>;
   setScreenTime: (totalMinutes: number, productiveMinutes?: number, leisureMinutes?: number) => Promise<void>;
+  resetMetrics: () => Promise<void>;
+  startNewDayMetrics: (nextDate: string) => Promise<void>;
   loadCachedMetrics: (date: string) => Promise<void>;
 }
 

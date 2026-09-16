@@ -33,14 +33,19 @@ src/components/schedule/
 ├── LeaderLineSvg.tsx                  # SVG connecting path for displaced zero-duration items
 ├── TriStateCheckbox.tsx               # Circular tri-state checkbox primitive
 ├── AddScheduleItemFab.tsx             # Floating Action Button (+ FAB) for creating items
-└── BlockConfigModal.tsx               # Reactive block creation & time recalculation sheet
+├── BlockConfigModal.tsx               # Reactive block creation & time recalculation sheet
+├── ResetConfirmModal.tsx              # Confirmation modal for resetting today's tasks & vitals
+└── StartNewDayConfirmModal.tsx        # Rollover modal archiving summary JSON & advancing day
 ```
 
 ### Component Breakdown
 
-1. **`DailyScheduleScreen`:**
+1. **`DailyScheduleScreen` & `DailyScreen`:**
    - Mounts top navigation sub-tabs (`Schedule & Plan` vs `Daily Health & Vitals`).
-   - Hosts header action `[ Generate Report ]`.
+   - Hosts header actions:
+     - `[ 📊 Generate Report ]`: Launches synthesis modal and JSON exporter.
+     - `[ ↺ Reset ]`: Opens `ResetConfirmModal` to clear task progress.
+     - `[ 🌅 Start New Day ]`: Opens `StartNewDayConfirmModal`, archives today's summary JSON into storage, and rolls over to tomorrow.
    - Subscribes to `useScheduleStore` and passes normalized block collections to `Timeline24Hour`.
    - Mounts `AddScheduleItemFab` anchored to the bottom-right.
 
@@ -165,6 +170,21 @@ A cubic bezier or 2-segment polyline is constructed:
 $$M(x_0, y_{\text{anchor}}) \to L(x_0 + 12, y_{\text{anchor}}) \to L(x_1 - 8, y_{\text{rendered}} + 16) \to L(x_1, y_{\text{rendered}} + 16)$$
 Styled with `stroke="#94A3B8" strokeWidth="1.5" strokeDasharray="3,3"`.
 
+### 4. Timezone-Safe Date Rollover Engine
+When rolling over to tomorrow via "Start New Day", the date arithmetic utilizes UTC-normalized components to avoid daylight saving or local timezone shifts:
+
+```typescript
+export function getNextDayDateString(currentDateStr: string): string {
+  const parts = currentDateStr.trim().split('-');
+  const year = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10);
+  const day = parseInt(parts[2], 10);
+  const d = new Date(Date.UTC(year, month - 1, day));
+  d.setUTCDate(d.getUTCDate() + 1);
+  return d.toISOString().split('T')[0];
+}
+```
+
 ---
 
 ## 4. State Management Contract (`useScheduleStore.ts`)
@@ -185,6 +205,8 @@ interface ScheduleStoreState {
   updateBlock: (id: string, updates: Partial<ScheduleBlock>) => Promise<void>;
   cycleStatus: (id: string) => Promise<void>;
   deleteBlock: (id: string) => Promise<void>;
+  resetSchedule: () => Promise<void>;
+  startNewDaySchedule: (nextDate: string) => Promise<void>;
   loadCachedSchedule: (date: string) => Promise<void>;
 }
 

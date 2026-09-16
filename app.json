@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "personal-dashboard",
-    "slug": "personal-dashboard",
+    "slug": "mlipski",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -23,6 +23,7 @@
         "keyAlias": "release-key",
         "keyPassword": "$RELEASE_KEY_PASSWORD"
       },
+      "package": "com.lipski.personaldashboard",
       "predictiveBackGestureEnabled": false
     },
     "web": {
@@ -43,6 +44,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "8ac836c1-404a-4e95-8606-47bd2c068f7f"
+      }
+    },
+    "owner": "m.lipski"
   }
 }

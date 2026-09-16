@@ -173,7 +173,16 @@ export interface DailyScheduleState {
 
 ---
 
-## 8. Floating Action Button (FAB) for Adding Items
+## 8. Header Actions & Day Management Controls
+
+The top header bar coordinates executive controls for the day:
+* **`📊 Generate Report` (Primary Action):** Compiles and displays the end-of-day summary payload with clipboard and client archive export.
+* **`↺ Reset` (Secondary Action):** Opens `ResetConfirmModal`. Confirms resetting today's schedule items back to `pending` (clearing timestamps) and resetting health vitals to clean defaults.
+* **`🌅 Start New Day` (Rollover Action):** Opens `StartNewDayConfirmModal`. Automatically generates and stores today's full summary JSON report into client storage (`daily_reports_archive_YYYY-MM-DD` and `archived_report_dates`), then advances the dashboard date to tomorrow with routine blocks reset to `pending` and vitals zeroed.
+
+---
+
+## 9. Floating Action Button (FAB) for Adding Items
 
 A circular Floating Action Button (FAB) is anchored to the bottom-right of the viewport, styled identically to Google Calendar's creation trigger:
 * **Visual Styling:** Elevated circular button ($56\times56\text{px}$) with a prominent plus icon (`+`), drop shadow, and primary brand accent background (`#3B82F6` or theme primary).
@@ -186,13 +195,13 @@ A circular Floating Action Button (FAB) is anchored to the bottom-right of the v
 
 ---
 
-## 9. UI & Screen Layout
+## 10. UI & Screen Layout
 
-### ASCII Wireframe: 24-Hour Split Timeline with FAB
+### ASCII Wireframe: 24-Hour Split Timeline with Header Actions & FAB
 ```
 +-----------------------------------------------------------------------------+
-|  DAILY VIEW: WEDNESDAY, SEP 9           [ Generate Report ]                 |
-|  [ (•) Schedule & Plan ]    [ Daily Health & Vitals ]                       |
+|  DAILY EXECUTION ENGINE   WEDNESDAY, SEP 9    [ 📊 Report ] [ ↺ Reset ] [ 🌅 New Day ]
+|  [ (•) Schedule & Plan ]  [ Daily Health & Vitals ]  [ Past Reports ]       |
 |-----------------------------------------------------------------------------|
 | TIME  | LEFT HALF (Duration Blocks)        | RIGHT HALF (Zero-Time Habits)  |
 |-------+------------------------------------+--------------------------------|
@@ -249,11 +258,12 @@ A circular Floating Action Button (FAB) is anchored to the bottom-right of the v
 
 ---
 
-## 10. Engineering Action Items
+## 11. Engineering Action Items
 
 1. **Floating Action Button (`AddScheduleItemFab.tsx`):** Fixed circular bottom-right trigger dispatching modal in creation mode.
 2. **24-Hour Timeline Grid (`Timeline24Hour.tsx`):** Scrollable vertical container rendering 24 hourly ticks (`00:00` to `23:00`) with a configurable hour height (e.g., `64px/hour`).
 3. **Left-Lane Block Renderer (`LeftDurationBlock.tsx`):** Calculates `top = (startMinutes / 60) * hourHeight` and `height = (durationMinutes / 60) * hourHeight`. Renders header at top.
 4. **Right-Lane Stacking & Leader Lines (`RightLaneZeroDurationBlock.tsx`):** Computes visual collision offsets for items near the same timestamp. Draws SVG connecting lines from `(x0, anchorY)` to `(x1, renderedY)`.
 5. **Tri-State Checkbox Primitive (`TriStateCheckbox.tsx`):** Handles tap event to cycle `pending -> completed -> missed -> pending`.
-6. **State & Cache Store (`useScheduleStore`):** Manages block list with auto-persistence to `AsyncStorage`.
+6. **State & Cache Store (`useScheduleStore`):** Manages block list with auto-persistence, `resetSchedule()`, and `startNewDaySchedule()`.
+7. **Confirmation Modals (`ResetConfirmModal.tsx`, `StartNewDayConfirmModal.tsx`):** Modals protecting destructive resets and automating summary report archiving upon day rollover.
